@@ -1,0 +1,13 @@
+{
+  "name": "my-lean-marketplace",
+  "owner": {
+    "name": "francescobonfili-a11y"
+  },
+  "plugins": [
+    {
+      "name": "lean-dev-kit",
+      "source": "./",
+      "description": "Sviluppo professionale con routing mirato dei subagent (Haiku/Sonnet/Opus) e ottimizzazione token."
+    }
+  ]
+}

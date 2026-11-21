@@ -1,0 +1,9 @@
+{
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "command": "node hooks/check-lean.js",
+      "description": "Verifica che CLAUDE.md sia leggero e che .claudeignore esista."
+    }
+  ]
+}
