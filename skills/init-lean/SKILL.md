@@ -49,11 +49,21 @@ Ridurre il contesto caricato automaticamente da Claude Code.
 
 - Mostra il diff all'utente prima di scrivere se il file esisteva gia'.
 
-### 4. Report finale
+### 4. Triage agenti e skill del progetto
+
+Solo se `node "<base directory>/../audit/audit.js"` segnala agenti > ~3k token:
+
+- Elenca gli agenti in `.claude/agents/` (nome + una riga di descrizione) raggruppati per area.
+- Proponi quali tenere (quelli coerenti con lo stack e il lavoro reale del progetto) e quali archiviare.
+- Dopo conferma, **sposta** (mai cancellare) i non scelti in `.claude/_archivio/agents/`. Ripristino = rimettere il file.
+- Non toccare `~/.claude/agents/` senza richiesta esplicita.
+
+### 5. Report finale
 
 ```
 ✅ init-lean completato
    CLAUDE.md: <righe> righe, <byte> byte
    docs/architecture.md: creato/aggiornato/non necessario
    .claude/settings.json: <n> regole deny aggiunte
+   Agenti: <tenuti>/<totali>, archiviati in .claude/_archivio/agents/
 ```
