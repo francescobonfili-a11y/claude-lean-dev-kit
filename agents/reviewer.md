@@ -4,9 +4,7 @@ model: sonnet
 description: >
   Subagent dedicato alla code review isolata.
   Lavora esclusivamente sul git diff senza leggere l'intera codebase.
-tools:
-  - run_command
-  - read_file
+tools: Read, Grep, Bash
 ---
 
 # Reviewer (Sonnet)

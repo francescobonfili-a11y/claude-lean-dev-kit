@@ -1,51 +1,55 @@
 #!/usr/bin/env node
-
 /**
- * Hook SessionStart: verifica che CLAUDE.md sia leggero e .claudeignore esista.
- * Soglie: max 120 righe, max 5120 byte.
+ * Hook SessionStart: avvisa se CLAUDE.md e' pesante o mancano regole deny
+ * per i file rumorosi. Soglie: max 120 righe, max 5120 byte.
+ * Non blocca mai la sessione: ogni errore esce silenziosamente con codice 0.
  */
-
 const fs = require('fs');
 const path = require('path');
 
 const MAX_LINES = 120;
 const MAX_BYTES = 5120;
-const PREFIX = '[lean-dev-kit]';
 
-const cwd = process.cwd();
-const claudeMd = path.join(cwd, 'CLAUDE.md');
-const claudeIgnore = path.join(cwd, '.claudeignore');
-
-const warnings = [];
-
-// Check CLAUDE.md
-if (fs.existsSync(claudeMd)) {
-  const content = fs.readFileSync(claudeMd, 'utf-8');
-  const stats = fs.statSync(claudeMd);
-  const lines = content.split('\n').length;
-  const bytes = stats.size;
-
-  if (lines > MAX_LINES) {
-    warnings.push(`⚠️  CLAUDE.md ha ${lines} righe (limite: ${MAX_LINES}). Lancia /init-lean per comprimerlo.`);
-  }
-  if (bytes > MAX_BYTES) {
-    warnings.push(`⚠️  CLAUDE.md pesa ${bytes} byte (limite: ${MAX_BYTES}). Lancia /init-lean per comprimerlo.`);
-  }
-  if (lines <= MAX_LINES && bytes <= MAX_BYTES) {
-    // Tutto ok, nessun avviso
-  }
-} else {
-  // Nessun CLAUDE.md presente, non è un errore
+function readStdin() {
+  try { return JSON.parse(fs.readFileSync(0, 'utf-8') || '{}'); } catch { return {}; }
 }
 
-// Check .claudeignore
-if (!fs.existsSync(claudeIgnore)) {
-  warnings.push(`⚠️  .claudeignore non trovato. Lancia /init-lean per generarlo.`);
+function hasDenyRules(dir) {
+  for (const f of ['settings.json', 'settings.local.json']) {
+    try {
+      const s = JSON.parse(fs.readFileSync(path.join(dir, '.claude', f), 'utf-8'));
+      if (s && s.permissions && Array.isArray(s.permissions.deny) && s.permissions.deny.length) return true;
+    } catch { /* file assente o non valido */ }
+  }
+  return false;
 }
 
-// Output
-if (warnings.length > 0) {
-  console.log(`\n${PREFIX} Controllo contesto all'avvio:`);
-  warnings.forEach(w => console.log(`  ${w}`));
-  console.log('');
-}
+try {
+  const input = readStdin();
+  const cwd = input.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const warnings = [];
+
+  for (const p of [path.join(cwd, 'CLAUDE.md'), path.join(cwd, '.claude', 'CLAUDE.md')]) {
+    if (!fs.existsSync(p)) continue;
+    const content = fs.readFileSync(p, 'utf-8');
+    const lines = content.replace(/\r?\n$/, '').split(/\r?\n/).length;
+    const bytes = Buffer.byteLength(content, 'utf-8');
+    const name = path.relative(cwd, p);
+    if (lines > MAX_LINES) warnings.push(`${name} ha ${lines} righe (limite ${MAX_LINES})`);
+    if (bytes > MAX_BYTES) warnings.push(`${name} pesa ${bytes} byte (limite ${MAX_BYTES})`);
+  }
+
+  if (!hasDenyRules(cwd)) {
+    warnings.push('nessuna regola permissions.deny in .claude/settings.json (node_modules, build, .env...)');
+  }
+
+  if (warnings.length) {
+    const msg = `[lean-dev-kit] ${warnings.join('; ')}. Lancia /lean-dev-kit:init-lean.`;
+    // systemMessage = visibile all'utente; additionalContext = visibile a Claude
+    process.stdout.write(JSON.stringify({
+      systemMessage: msg,
+      hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: msg }
+    }));
+  }
+} catch { /* mai bloccare l'avvio */ }
+process.exit(0);

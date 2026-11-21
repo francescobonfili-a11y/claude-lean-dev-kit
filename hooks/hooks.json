@@ -1,9 +1,15 @@
 {
-  "hooks": [
-    {
-      "event": "SessionStart",
-      "command": "node hooks/check-lean.js",
-      "description": "Verifica che CLAUDE.md sia leggero e che .claudeignore esista."
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/check-lean.js\""
+          }
+        ]
+      }
+    ]
+  }
 }

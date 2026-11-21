@@ -1,58 +1,60 @@
 ---
 name: init-lean
 description: >
-  Comprime CLAUDE.md sotto le 120 righe / 5 KB, sposta i dettagli in docs/architecture.md,
-  e genera .claudeignore. Da lanciare una volta su ogni progetto nuovo o pesante.
+  Comprime CLAUDE.md sotto le 120 righe / 5 KB, sposta i dettagli in docs/architecture.md
+  e aggiunge regole permissions.deny in .claude/settings.json per escludere file rumorosi.
+  Da lanciare una volta su ogni progetto nuovo o pesante.
 ---
 
 # Skill: init-lean
 
 ## Obiettivo
 
-Preparare un progetto per il lavoro lean riducendo il contesto caricato automaticamente da Claude Code.
+Ridurre il contesto caricato automaticamente da Claude Code.
 
 ## Passi
 
 ### 1. Analizza `CLAUDE.md`
 
-- Conta righe e dimensione in byte.
-- Se è già ≤ 120 righe e ≤ 5120 byte, segnala "già ottimizzato" e passa al passo 3.
+- Conta righe e byte. Se <= 120 righe e <= 5120 byte, segnala "gia' ottimizzato" e passa al passo 3.
 
 ### 2. Comprimi `CLAUDE.md`
 
-- Estrai le sezioni di dettaglio (architettura, convenzioni verbose, esempi lunghi).
-- Spostale in `docs/architecture.md` (crea la directory se manca).
-- In `CLAUDE.md` lascia solo:
-  - Descrizione progetto (3-5 righe)
-  - Stack tecnologico (elenco puntato)
-  - Convenzioni critiche (max 20 righe)
-  - Link a `docs/architecture.md` per i dettagli
-- Verifica che il risultato sia ≤ 120 righe e ≤ 5120 byte.
+- Sposta architettura, convenzioni verbose ed esempi lunghi in `docs/architecture.md` (crea la directory se manca). Non perdere contenuto: spostalo, non cancellarlo.
+- In `CLAUDE.md` lascia solo: descrizione (3-5 righe), stack (elenco), convenzioni critiche (max 20 righe), link a `docs/architecture.md`.
+- Verifica che il risultato sia <= 120 righe e <= 5120 byte.
 
-### 3. Genera `.claudeignore`
+### 3. Escludi i file rumorosi
 
-Se `.claudeignore` non esiste, crealo con:
+`.claudeignore` NON e' supportato da Claude Code. Usa `permissions.deny` in `.claude/settings.json`.
 
+- Se il file esiste, leggilo e fai merge: non sovrascrivere altre chiavi ne' regole esistenti.
+- Aggiungi (solo quelle mancanti, adattando allo stack del progetto):
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Read(./node_modules/**)",
+      "Read(./dist/**)",
+      "Read(./build/**)",
+      "Read(./.next/**)",
+      "Read(./coverage/**)",
+      "Read(./**/*.lock)",
+      "Read(./**/*.log)",
+      "Read(./.env*)"
+    ]
+  }
+}
 ```
-node_modules/
-dist/
-build/
-.next/
-coverage/
-*.lock
-*.log
-.env*
-```
 
-Se esiste già, verifica che contenga almeno le voci sopra e aggiungi quelle mancanti.
+- Mostra il diff all'utente prima di scrivere se il file esisteva gia'.
 
 ### 4. Report finale
-
-Stampa un riepilogo:
 
 ```
 ✅ init-lean completato
    CLAUDE.md: <righe> righe, <byte> byte
-   docs/architecture.md: creato/aggiornato
-   .claudeignore: creato/verificato
+   docs/architecture.md: creato/aggiornato/non necessario
+   .claude/settings.json: <n> regole deny aggiunte
 ```
