@@ -1,6 +1,6 @@
 {
   "name": "lean-dev-kit",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Regolatore lean: plugin on-demand per progetto, CLAUDE.md compatto, deny rules.",
   "author": { "name": "francescobonfili-a11y" }
 }

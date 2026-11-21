@@ -39,7 +39,11 @@ function readJson(f) { try { return JSON.parse(fs.readFileSync(f, 'utf-8')); } c
 
 try {
   const input = JSON.parse(fs.readFileSync(0, 'utf-8') || '{}');
-  const prompt = String(input.prompt || '').slice(0, 2000);
+  // Ignora i blocchi iniettati dalla sessione: contengono testo che non e' dell'utente.
+  const prompt = String(input.prompt || '')
+    .replace(/<(browser_instruction|system-reminder|local-command-caveat|local-command-stdout)>[\s\S]*?<\/\1>/gi, ' ')
+    .trim()
+    .slice(0, 2000);
   if (prompt.length < 15 || prompt.trim().startsWith('/')) process.exit(0);
 
   const cwd = input.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
