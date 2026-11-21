@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "Sviluppo professionale con routing mirato dei subagent (Haiku/Sonnet/Opus) e ottimizzazione token.",
   "agents": [
-    "agents/explorer.md",
-    "agents/architect.md",
-    "agents/reviewer.md"
+    "./agents/explorer.md",
+    "./agents/architect.md",
+    "./agents/reviewer.md"
   ],
   "skills": [
-    "skills/init-lean",
-    "skills/dev-flow"
+    "./skills/init-lean",
+    "./skills/dev-flow"
   ],
-  "hooks": "hooks/hooks.json"
+  "hooks": "./hooks/hooks.json"
 }
