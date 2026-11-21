@@ -1,6 +1,6 @@
 {
   "name": "lean-dev-kit",
-  "version": "1.1.0",
-  "description": "Sviluppo professionale con routing mirato dei subagent (Haiku/Sonnet/Opus) e ottimizzazione token.",
+  "version": "2.0.0",
+  "description": "Regolatore lean: plugin on-demand per progetto, CLAUDE.md compatto, deny rules.",
   "author": { "name": "francescobonfili-a11y" }
 }

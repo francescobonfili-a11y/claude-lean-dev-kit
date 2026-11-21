@@ -1,68 +1,83 @@
 # claude-lean-dev-kit
 
-Plugin leggero per Claude Code progettato per mantenere alta la qualità ingegneristica riducendo il consumo del limite settimanale su Claude Pro.
+Regolatore leggero per Claude Code: ogni skill/plugin si attiva solo quando serve, il resto non occupa contesto. Obiettivo: massima resa professionale con il minimo consumo del limite Claude Pro.
 
-## Componenti inclusi
+## Principi
 
-- **Subagent `explorer` (Haiku):** analisi codebase e log in sola lettura, senza sporcare il contesto principale.
-- **Subagent `architect` (Opus):** design architetturale, specifiche e bug complessi.
-- **Subagent `reviewer` (Sonnet):** code review isolata sul solo `git diff`.
-- **Skill `/lean-dev-kit:init-lean`:** crea/comprime `CLAUDE.md` (<120 righe), sposta i dettagli in `docs/architecture.md` e aggiunge regole `permissions.deny` (Claude Code non supporta `.claudeignore`).
-- **Skill `/lean-dev-kit:dev-flow`:** orchestra automaticamente i 3 subagent (Esplorazione → Design → Implementazione → Review).
-- **Hook `SessionStart`:** segnala all'avvio se `CLAUDE.md` supera le 120 righe/5 KB o se mancano regole `permissions.deny`.
+1. **Il contesto fisso costa a ogni turno.** Solo plugin piccoli restano attivi globalmente; quelli pesanti si accendono per progetto.
+2. **Un modello per fase.** `opusplan`: Opus in plan mode (design), Sonnet per implementare.
+3. **Il lavoro largo esce da Claude.** Contesto ampio → Gemini (`/ext-analyze`), seconda opinione sul diff → modello esterno (`/ext-review`).
+4. **Le skill del kit non si auto-invocano** (`disable-model-invocation`): zero token finché non le lanci.
 
-## Installazione (su ogni postazione)
+## Componenti
 
-1. Apri Claude Code ed esegui:
-   ```text
-   /plugin marketplace add francescobonfili-a11y/claude-lean-dev-kit
-   /plugin install lean-dev-kit@my-lean-marketplace
-   ```
+| Componente | Cosa fa |
+|---|---|
+| `/lean-dev-kit:mode [status\|base\|memory\|full]` | Stato modello/plugin con avvisi; attiva i plugin pesanti solo nel progetto corrente (`.claude/settings.local.json`) |
+| `/lean-dev-kit:init-lean` | Comprime `CLAUDE.md` (<120 righe/5 KB) e aggiunge `permissions.deny` per i file rumorosi (Claude Code non supporta `.claudeignore`) |
+| Hook `SessionStart` | Solo dentro un progetto: avvisa se `CLAUDE.md` è pesante o mancano regole deny. Silenzioso altrimenti |
 
-2. Imposta sonnet come modello base in `~/.claude/settings.json`:
-   ```json
-   {
-     "model": "sonnet"
-   }
-   ```
+## Routing (cosa usare quando)
 
-3. (Opzionale) Disabilita dallo scope user i plugin ridondanti (`code-review`, `token-optimizer`) e sposta fuori da `~/.claude/agents/` eventuali agenti globali inutilizzati.
+| Situazione | Strumento | Modello |
+|---|---|---|
+| Fix veloce, 1-2 file | chat diretta, nessuna skill | Sonnet |
+| Feature nuova / refactor multi-file | plan mode (`Shift+Tab`) + `superpowers:brainstorming` → `writing-plans` | Opus pianifica, Sonnet esegue |
+| Bug non ovvio | `superpowers:systematic-debugging` | Sonnet |
+| Capire > ~5 file o documenti lunghi | `/ext-analyze` | Gemini |
+| Commit con > ~50 righe di logica di dominio | `/ext-review` (una volta) | Codex/Gemini |
+| API di una libreria | context7 | — |
+| Progetto lungo, serve memoria tra sessioni | `/lean-dev-kit:mode memory` | — |
+| Progetto nuovo o `CLAUDE.md` gonfio | `/lean-dev-kit:init-lean` | Sonnet |
 
-## Aggiornamento sulle altre postazioni
+## Configurazione consigliata (`~/.claude/settings.json`)
 
-Dopo aver fatto `git push` di una modifica al repository, esegui su ciascun PC:
+```json
+{
+  "model": "opusplan",
+  "enabledPlugins": {
+    "lean-dev-kit@my-lean-marketplace": true,
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "andrej-karpathy-skills@karpathy-skills": true,
+    "claude-mem@thedotmack": false,
+    "token-optimizer@token-optimizer": false
+  }
+}
+```
+
+Le regole di routing vanno anche, in forma compatta, nel `~/.claude/CLAUDE.md` globale (vedi sotto), così Claude le applica senza caricare skill.
+
+```markdown
+## Orchestrazione
+- superpowers: ignora la regola "1% -> invoca sempre". Solo: brainstorming/writing-plans
+  per feature multi-file, systematic-debugging per bug non ovvi, TDD se il progetto ha test.
+  Fix banali: nessuna skill.
+- Design in plan mode (Opus), implementazione su Sonnet (opusplan).
+- Memoria: quella nativa. claude-mem solo se attivo nel progetto.
+- Output asciutto: niente preamboli, narrazione dei tool o riepiloghi finali.
+```
+
+## Installazione
+
+```text
+/plugin marketplace add francescobonfili-a11y/claude-lean-dev-kit
+/plugin install lean-dev-kit@my-lean-marketplace
+```
+
+Aggiornamento sulle altre postazioni dopo un push:
 
 ```text
 /plugin marketplace update my-lean-marketplace
 ```
 
-## Utilizzo quotidiano
-
-| Scenario | Azione |
-|---|---|
-| **Nuovo progetto o progetto pesante** | Lancia `/lean-dev-kit:init-lean` una volta sola |
-| **Fix veloci** | Lavora direttamente in chat su Sonnet |
-| **Feature strutturate o refactor critici** | Lancia `/lean-dev-kit:dev-flow <descrizione del task>` |
-
-## Struttura del repository
+## Struttura
 
 ```
-claude-lean-dev-kit/
-├── .claude-plugin/
-│   ├── plugin.json
-│   └── marketplace.json
-├── agents/
-│   ├── explorer.md
-│   ├── architect.md
-│   └── reviewer.md
-├── skills/
-│   ├── init-lean/SKILL.md
-│   └── dev-flow/SKILL.md
-├── hooks/
-│   ├── hooks.json
-│   └── check-lean.js
-├── .gitignore
-└── README.md
+.claude-plugin/{plugin.json, marketplace.json}
+skills/mode/{SKILL.md, mode.js}
+skills/init-lean/SKILL.md
+hooks/{hooks.json, check-lean.js}
 ```
 
 ## Licenza

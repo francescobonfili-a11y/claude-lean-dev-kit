@@ -28,6 +28,9 @@ try {
   const input = readStdin();
   const cwd = input.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const warnings = [];
+  // Avvisa solo dentro un progetto vero: niente rumore (e token) in cartelle qualsiasi.
+  const markers = ['.git', 'package.json', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'pom.xml', 'composer.json', 'CLAUDE.md'];
+  if (!markers.some(m => fs.existsSync(path.join(cwd, m)))) process.exit(0);
 
   for (const p of [path.join(cwd, 'CLAUDE.md'), path.join(cwd, '.claude', 'CLAUDE.md')]) {
     if (!fs.existsSync(p)) continue;

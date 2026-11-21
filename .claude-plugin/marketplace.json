@@ -7,7 +7,7 @@
     {
       "name": "lean-dev-kit",
       "source": "./",
-      "description": "Sviluppo professionale con routing mirato dei subagent (Haiku/Sonnet/Opus) e ottimizzazione token."
+      "description": "Regolatore lean: plugin on-demand per progetto, CLAUDE.md compatto, deny rules."
     }
   ]
 }

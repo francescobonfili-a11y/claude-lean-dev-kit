@@ -1,9 +1,7 @@
 ---
 name: init-lean
-description: >
-  Comprime CLAUDE.md sotto le 120 righe / 5 KB, sposta i dettagli in docs/architecture.md
-  e aggiunge regole permissions.deny in .claude/settings.json per escludere file rumorosi.
-  Da lanciare una volta su ogni progetto nuovo o pesante.
+description: Comprime CLAUDE.md (<120 righe/5 KB) e aggiunge regole permissions.deny per i file rumorosi.
+disable-model-invocation: true
 ---
 
 # Skill: init-lean
@@ -22,6 +20,7 @@ Ridurre il contesto caricato automaticamente da Claude Code.
 
 - Sposta architettura, convenzioni verbose ed esempi lunghi in `docs/architecture.md` (crea la directory se manca). Non perdere contenuto: spostalo, non cancellarlo.
 - In `CLAUDE.md` lascia solo: descrizione (3-5 righe), stack (elenco), convenzioni critiche (max 20 righe), link a `docs/architecture.md`.
+- Mostra il diff all'utente prima di sovrascrivere `CLAUDE.md`.
 - Verifica che il risultato sia <= 120 righe e <= 5120 byte.
 
 ### 3. Escludi i file rumorosi
