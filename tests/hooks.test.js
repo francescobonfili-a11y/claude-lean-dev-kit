@@ -59,23 +59,21 @@ test('check-lean: silenzioso fuori da un progetto', () => {
   assert.strictEqual(check(tmp('hk-vuota-')), null);
 });
 
-test('check-lean: avvisa se mancano i deny', () => {
+test('check-lean: nessun avviso su permessi mancanti, mai richieste di deny', () => {
   const d = tmp('hk-proj-');
   write(path.join(d, 'package.json'), '{}');
-  assert.match(check(d), /permissions\.deny/);
+  assert.strictEqual(check(d), null);
 });
 
-test('check-lean: nessun avviso con deny presenti e CLAUDE.md leggero', () => {
+test('check-lean: nessun avviso con CLAUDE.md leggero', () => {
   const d = tmp('hk-proj-');
   write(path.join(d, 'package.json'), '{}');
   write(path.join(d, 'CLAUDE.md'), 'regola\n'.repeat(10));
-  write(path.join(d, '.claude', 'settings.json'), JSON.stringify({ permissions: { deny: ['Read(./.env*)'] } }));
   assert.strictEqual(check(d), null);
 });
 
 test('check-lean: avvisa se CLAUDE.md supera le soglie', () => {
   const d = tmp('hk-proj-');
   write(path.join(d, 'CLAUDE.md'), 'riga lunga di testo\n'.repeat(200));
-  write(path.join(d, '.claude', 'settings.json'), JSON.stringify({ permissions: { deny: ['Read(./.env*)'] } }));
-  assert.match(check(d), /righe.*byte|righe/);
+  assert.match(check(d), /righe/);
 });

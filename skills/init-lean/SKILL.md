@@ -1,6 +1,6 @@
 ---
 name: init-lean
-description: Comprime CLAUDE.md (<120 righe/5 KB) e aggiunge regole permissions.deny per i file rumorosi.
+description: Comprime CLAUDE.md (<120 righe/5 KB) e fa il triage degli agenti. Restrizioni di lettura solo se richieste.
 disable-model-invocation: true
 ---
 
@@ -23,14 +23,15 @@ Ridurre il contesto caricato automaticamente da Claude Code.
 - Mostra il diff all'utente prima di sovrascrivere `CLAUDE.md`.
 - Verifica che il risultato sia <= 120 righe e <= 5120 byte.
 
-### 3. Escludi i file rumorosi
+### 3. Permessi di lettura (solo su richiesta esplicita)
 
-`.claudeignore` NON e' supportato da Claude Code. Le esclusioni vanno in `permissions.deny` di `.claude/settings.json`. Lo script rileva lo stack, fa il merge (non tocca altre chiavi ne' regole esistenti) e fa backup.
+Principio: **Claude deve poter leggere ogni file**. Non proporre ne' applicare restrizioni di tua iniziativa: salta questo passo, a meno che l'utente le chieda.
+Se le chiede (`.claudeignore` NON e' supportato; si usa `permissions` in `.claude/settings.json`):
 
-1. Anteprima: `node "<base directory di questa skill>/init-lean.js"`. Mostra lo stack e le regole che aggiungerebbe.
-2. Lockfile (opzionale): non vanno in `deny` perche' a volte servono per debuggare le dipendenze. Chiedi all'utente se vuole che Claude debba chiedere permesso prima di leggerli (`permissions.ask`). Se si', aggiungi `--ask-locks`.
-3. Mostra l'anteprima e chiedi conferma. Senza un "si'" non scrivere nulla.
-4. Con la conferma: `node "<base directory di questa skill>/init-lean.js" --apply [--ask-locks]`.
+1. Anteprima: `node "<base directory di questa skill>/init-lean.js" --deny [--ask-locks]`. `--deny` blocca cartelle generate/dipendenze dello stack; `--ask-locks` richiede l'approvazione per leggere i lockfile esistenti. Il merge non tocca altre chiavi ne' regole esistenti.
+2. Mostra l'anteprima e chiedi conferma. Senza un "si'" non scrivere nulla.
+3. Con la conferma aggiungi `--apply`.
+4. Avverti che `vendor/` (PHP, Go) bloccato impedisce di leggere il sorgente delle librerie per il debug: lo script lo include solo con `--deny`, chiedi se tenerlo.
 
 ### 4. Triage agenti e skill del progetto
 
@@ -47,6 +48,6 @@ Solo se `node "<base directory>/../audit/audit.js"` segnala agenti > ~3k token:
 ✅ init-lean completato
    CLAUDE.md: <righe> righe, <byte> byte
    docs/architecture.md: creato/aggiornato/non necessario
-   .claude/settings.json: <n> regole deny aggiunte, lockfile ask: si'/no
+   Permessi: nessuna restrizione (default) | deny/ask aggiunti su richiesta
    Agenti: <tenuti>/<totali>, archiviati in .claude/_archivio/agents/
 ```

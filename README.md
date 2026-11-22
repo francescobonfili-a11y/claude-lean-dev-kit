@@ -8,6 +8,7 @@ Regolatore leggero per Claude Code: ogni skill/plugin si attiva solo quando serv
 2. **Un modello per fase.** `opusplan`: Opus in plan mode (design), Sonnet per implementare.
 3. **Il lavoro largo esce da Claude.** Contesto ampio → Gemini (`/ext-analyze`), seconda opinione sul diff → modello esterno (`/ext-review`).
 4. **Le skill del kit non si auto-invocano** (`disable-model-invocation`): zero token finché non le lanci.
+5. **Claude resta libero di leggere ogni file.** Il kit riduce il contesto fisso, non le capacita': le restrizioni (`permissions.deny`/`ask`) sono solo opt-in (`init-lean.js --deny`).
 
 ## Componenti
 
@@ -15,9 +16,9 @@ Regolatore leggero per Claude Code: ogni skill/plugin si attiva solo quando serv
 |---|---|
 | `/lean-dev-kit:audit` | In qualsiasi progetto stima il contesto fisso (agenti, CLAUDE.md, MEMORY.md, skill, MCP, plugin; baseline con `--save`; stima calibrata, il valore esatto e' `/context`) e classifica i risparmi |
 | `/lean-dev-kit:setup` | Allinea **questa postazione**: `opusplan`, effort `medium`, autocompact 50 e blocco di regole in `~/.claude/CLAUDE.md` (marcatori, idempotente, anteprima + backup). Da lanciare su ogni PC |
-| `/lean-dev-kit:init-lean` | Comprime `CLAUDE.md`, aggiunge `permissions.deny` (rileva lo stack; lockfile in `ask` opzionale), fa il triage degli agenti del progetto (archivia, non cancella) |
+| `/lean-dev-kit:init-lean` | Comprime `CLAUDE.md`, fa il triage degli agenti del progetto (archivia, non cancella) |
 | `/lean-dev-kit:mode [status\|base\|memory\|full]` | Accende i plugin pesanti solo nel progetto corrente |
-| Hook `SessionStart` | Solo in un progetto: avvisa se `CLAUDE.md` e' pesante o mancano regole deny |
+| Hook `SessionStart` | Solo in un progetto: avvisa se `CLAUDE.md` e' pesante |
 | Hook `UserPromptSubmit` | Suggerisce la skill adatta alla richiesta (bug, feature, test, review, API, analisi, memoria, costi). Una volta per tipo e sessione, silenzioso se nulla corrisponde |
 
 Nessuna skill del kit si auto-invoca (`disable-model-invocation`): zero token finche' non le lanci.

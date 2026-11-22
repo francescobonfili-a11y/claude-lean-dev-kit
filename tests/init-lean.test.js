@@ -24,9 +24,15 @@ test('anteprima non scrive nulla', () => {
   assert.ok(!fs.existsSync(path.join(d, '.claude', 'settings.json')));
 });
 
-test('apply: deny per stack, lockfile NON in deny e nessun ask senza flag', () => {
+test('default: nessuna restrizione, nemmeno con --apply', () => {
   const d = mk({ 'package.json': '{}' });
-  run(d, '--apply');
+  assert.match(run(d, '--apply').stdout, /Nessuna restrizione richiesta/);
+  assert.ok(!fs.existsSync(path.join(d, '.claude', 'settings.json')));
+});
+
+test('--deny: regole per stack, lockfile NON in deny e nessun ask senza flag', () => {
+  const d = mk({ 'package.json': '{}' });
+  run(d, '--apply', '--deny');
   const p = settings(d).permissions;
   assert.ok(p.deny.includes('Read(./node_modules/**)'));
   assert.ok(!p.deny.some(r => /\/\.env\*|\.log|lock/.test(r)));
@@ -41,18 +47,18 @@ test('--ask-locks aggiunge a ask solo i lockfile esistenti', () => {
 
 test('merge: preserva chiavi e regole esistenti, idempotente, backup', () => {
   const d = mk({ 'package.json': '{}', '.claude/settings.json': JSON.stringify({ model: 'opusplan', permissions: { deny: ['Read(./segreti/**)'], allow: ['Bash(ls)'] } }) });
-  run(d, '--apply');
+  run(d, '--apply', '--deny');
   const s = settings(d);
   assert.strictEqual(s.model, 'opusplan');
   assert.deepStrictEqual(s.permissions.allow, ['Bash(ls)']);
   assert.ok(s.permissions.deny.includes('Read(./segreti/**)'));
   assert.ok(fs.readdirSync(path.join(d, '.claude')).some(f => f.includes('.bak-')));
-  assert.match(run(d, '--apply').stdout, /Gia' allineato/);
+  assert.match(run(d, '--apply', '--deny').stdout, /Gia' allineato/);
 });
 
 test('settings.json non valido: esce con errore senza toccare il file', () => {
   const d = mk({ 'package.json': '{}', '.claude/settings.json': '{rotto' });
-  const r = run(d, '--apply');
+  const r = run(d, '--apply', '--deny');
   assert.strictEqual(r.status, 1);
   assert.strictEqual(fs.readFileSync(path.join(d, '.claude', 'settings.json'), 'utf-8'), '{rotto');
 });
@@ -64,7 +70,7 @@ test('stack non rilevato: solo regole comuni', () => {
 
 test('monorepo: rileva gli stack nelle sottocartelle e prefissa le regole', () => {
   const d = mk({ 'frontend/package.json': '{}', 'frontend/package-lock.json': '{}', 'backend/requirements.txt': '', '.venv/x': '' });
-  const r = run(d, '--apply', '--ask-locks');
+  const r = run(d, '--apply', '--deny', '--ask-locks');
   assert.match(r.stdout, /node \(frontend\/\)/);
   assert.match(r.stdout, /python \(backend\/\)/);
   const p = settings(d).permissions;

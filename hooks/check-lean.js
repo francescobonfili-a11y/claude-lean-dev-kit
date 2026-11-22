@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Hook SessionStart: avvisa se CLAUDE.md e' pesante o mancano regole deny
- * per i file rumorosi. Soglie: max 120 righe, max 5120 byte.
+ * Hook SessionStart: avvisa se CLAUDE.md e' pesante. Non chiede mai restrizioni di lettura
+ * (permissions.deny): Claude deve poter leggere ogni file. Soglie: max 120 righe, max 5120 byte.
  * Non blocca mai la sessione: ogni errore esce silenziosamente con codice 0.
  */
 const fs = require('fs');
@@ -12,16 +12,6 @@ const MAX_BYTES = 5120;
 
 function readStdin() {
   try { return JSON.parse(fs.readFileSync(0, 'utf-8') || '{}'); } catch { return {}; }
-}
-
-function hasDenyRules(dir) {
-  for (const f of ['settings.json', 'settings.local.json']) {
-    try {
-      const s = JSON.parse(fs.readFileSync(path.join(dir, '.claude', f), 'utf-8'));
-      if (s && s.permissions && Array.isArray(s.permissions.deny) && s.permissions.deny.length) return true;
-    } catch { /* file assente o non valido */ }
-  }
-  return false;
 }
 
 try {
@@ -40,10 +30,6 @@ try {
     const name = path.relative(cwd, p);
     if (lines > MAX_LINES) warnings.push(`${name} ha ${lines} righe (limite ${MAX_LINES})`);
     if (bytes > MAX_BYTES) warnings.push(`${name} pesa ${bytes} byte (limite ${MAX_BYTES})`);
-  }
-
-  if (!hasDenyRules(cwd)) {
-    warnings.push('nessuna regola permissions.deny in .claude/settings.json (node_modules, build, .env...)');
   }
 
   if (warnings.length) {

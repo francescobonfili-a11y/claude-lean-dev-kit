@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
- * lean-dev-kit init-lean: rileva lo stack e aggiunge a .claude/settings.json le regole
- * permissions.deny per i file rumorosi (merge: non tocca altre chiavi ne' regole esistenti).
+ * lean-dev-kit init-lean: rileva lo stack. PER DEFAULT NON LIMITA NULLA: Claude resta libero di
+ * leggere ogni file. Le restrizioni sono opt-in e vanno in .claude/settings.json (merge: non tocca
+ * altre chiavi ne' regole esistenti):
+ *   --deny       permissions.deny per cartelle generate/dipendenze (node_modules, dist, .venv...)
+ *   --ask-locks  lockfile esistenti in permissions.ask (lettura solo con permesso)
  * Senza --apply mostra solo l'anteprima. Con --apply scrive, dopo backup se il file esisteva.
- * Con --ask-locks aggiunge i lockfile dello stack a permissions.ask (lettura solo con permesso).
- * Uso: node init-lean.js [cartella-progetto] [--apply] [--ask-locks]
+ * Uso: node init-lean.js [cartella-progetto] [--deny] [--ask-locks] [--apply]
  */
 const fs = require('fs');
 const path = require('path');
@@ -12,6 +14,7 @@ const path = require('path');
 const args = process.argv.slice(2);
 const APPLY = args.includes('--apply');
 const ASK_LOCKS = args.includes('--ask-locks');
+const DENY = args.includes('--deny');
 const proj = path.resolve(args.find(a => !a.startsWith('--')) || process.env.CLAUDE_PROJECT_DIR || process.cwd());
 
 let entries = [];
@@ -46,7 +49,7 @@ for (const loc of locations) {
 }
 // Pattern gia' globali (**/...) restano tali; gli altri sono relativi alla cartella dello stack.
 const rule = (loc, p) => `Read(./${loc && !p.startsWith('**/') ? loc + '/' : ''}${p})`;
-const wantDeny = [...new Set([...found.flatMap(({ stack, loc }) => STACKS[stack].deny.map(p => rule(loc, p))), ...COMMON_DENY.map(p => rule('', p))])];
+const wantDeny = !DENY ? [] : [...new Set([...found.flatMap(({ stack, loc }) => STACKS[stack].deny.map(p => rule(loc, p))), ...COMMON_DENY.map(p => rule('', p))])];
 // I lockfile in ask solo se esistono davvero (i pattern con ** restano).
 const exists = (loc, p) => p.startsWith('**/') || fs.existsSync(path.join(proj, loc, p));
 const wantAsk = ASK_LOCKS ? [...new Set(found.flatMap(({ stack, loc }) => STACKS[stack].ask.filter(p => exists(loc, p)).map(p => rule(loc, p))))] : [];
@@ -71,6 +74,7 @@ if (!Object.keys(settings.permissions).length) delete settings.permissions;
 
 console.log(`Progetto: ${proj}`);
 console.log(`Stack rilevato: ${found.map(x => x.stack + (x.loc ? ` (${x.loc}/)` : '')).join(', ') || 'nessuno (solo regole comuni)'}`);
+if (!DENY && !ASK_LOCKS) { console.log("Nessuna restrizione richiesta: Claude puo' leggere ogni file. Opzioni: --deny, --ask-locks."); process.exit(0); }
 if (!added.deny.length && !added.ask.length) { console.log('Gia\' allineato: nessuna regola da aggiungere.'); process.exit(0); }
 console.log(APPLY ? 'Regole aggiunte a .claude/settings.json:' : 'Regole proposte (nessuna scritta):');
 added.deny.forEach(r => console.log(`  deny ${r}`));
@@ -82,5 +86,5 @@ if (APPLY) {
   fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
   console.log(`\nScritto ${file}.`);
 } else {
-  console.log('\nPer applicare: aggiungi --apply (e --ask-locks per i lockfile).');
+  console.log('\nPer applicare: aggiungi --apply.');
 }
