@@ -52,7 +52,7 @@ Su ogni progetto: `/lean-dev-kit:audit`, poi se serve `/lean-dev-kit:init-lean`.
 .claude-plugin/{plugin.json, marketplace.json}
 skills/{audit,setup,mode}/{SKILL.md, *.js}
 skills/init-lean/{SKILL.md, init-lean.js}
-tests/{init-lean,audit}.test.js  (node --test tests/)
+tests/{init-lean,audit,hooks}.test.js  (node --test tests/)
 hooks/{hooks.json, check-lean.js, suggest.js}
 templates/policy.md
 ```
