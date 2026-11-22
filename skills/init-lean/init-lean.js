@@ -21,8 +21,8 @@ const SKIP = new Set(['node_modules', 'dist', 'build', 'target', 'vendor', 'stor
 const locations = [''].concat(entries.filter(e => e.isDirectory() && !e.name.startsWith('.') && !SKIP.has(e.name)).map(e => e.name));
 const listDir = loc => { try { return fs.readdirSync(path.join(proj, loc)); } catch { return []; } };
 
-// Regole comuni a ogni progetto.
-const COMMON_DENY = ['coverage/**', '**/*.log', '.env*'];
+// Regole comuni a ogni progetto. Log e .env NON si bloccano: servono per debuggare e verificare le configurazioni.
+const COMMON_DENY = ['coverage/**'];
 
 // detect: come riconoscere lo stack. deny: percorsi rumorosi. ask: lockfile (opzionali).
 const STACKS = {
@@ -47,7 +47,9 @@ for (const loc of locations) {
 // Pattern gia' globali (**/...) restano tali; gli altri sono relativi alla cartella dello stack.
 const rule = (loc, p) => `Read(./${loc && !p.startsWith('**/') ? loc + '/' : ''}${p})`;
 const wantDeny = [...new Set([...found.flatMap(({ stack, loc }) => STACKS[stack].deny.map(p => rule(loc, p))), ...COMMON_DENY.map(p => rule('', p))])];
-const wantAsk = ASK_LOCKS ? [...new Set(found.flatMap(({ stack, loc }) => STACKS[stack].ask.map(p => rule(loc, p))))] : [];
+// I lockfile in ask solo se esistono davvero (i pattern con ** restano).
+const exists = (loc, p) => p.startsWith('**/') || fs.existsSync(path.join(proj, loc, p));
+const wantAsk = ASK_LOCKS ? [...new Set(found.flatMap(({ stack, loc }) => STACKS[stack].ask.filter(p => exists(loc, p)).map(p => rule(loc, p))))] : [];
 
 const file = path.join(proj, '.claude', 'settings.json');
 let raw = null;

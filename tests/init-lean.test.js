@@ -29,13 +29,12 @@ test('apply: deny per stack, lockfile NON in deny e nessun ask senza flag', () =
   run(d, '--apply');
   const p = settings(d).permissions;
   assert.ok(p.deny.includes('Read(./node_modules/**)'));
-  assert.ok(p.deny.includes('Read(./.env*)'));
-  assert.ok(!p.deny.some(r => /lock/.test(r)));
+  assert.ok(!p.deny.some(r => /\/\.env\*|\.log|lock/.test(r)));
   assert.strictEqual(p.ask, undefined);
 });
 
-test('--ask-locks aggiunge i lockfile a ask', () => {
-  const d = mk({ 'Cargo.toml': '' });
+test('--ask-locks aggiunge a ask solo i lockfile esistenti', () => {
+  const d = mk({ 'Cargo.toml': '', 'Cargo.lock': '' });
   run(d, '--apply', '--ask-locks');
   assert.deepStrictEqual(settings(d).permissions.ask, ['Read(./Cargo.lock)']);
 });
@@ -64,7 +63,7 @@ test('stack non rilevato: solo regole comuni', () => {
 });
 
 test('monorepo: rileva gli stack nelle sottocartelle e prefissa le regole', () => {
-  const d = mk({ 'frontend/package.json': '{}', 'backend/requirements.txt': '', '.venv/x': '' });
+  const d = mk({ 'frontend/package.json': '{}', 'frontend/package-lock.json': '{}', 'backend/requirements.txt': '', '.venv/x': '' });
   const r = run(d, '--apply', '--ask-locks');
   assert.match(r.stdout, /node \(frontend\/\)/);
   assert.match(r.stdout, /python \(backend\/\)/);
@@ -73,5 +72,6 @@ test('monorepo: rileva gli stack nelle sottocartelle e prefissa le regole', () =
   assert.ok(p.deny.includes('Read(./backend/.venv/**)'));
   assert.ok(p.deny.includes('Read(./.venv/**)'));
   assert.ok(p.ask.includes('Read(./frontend/package-lock.json)'));
-  assert.ok(p.deny.includes('Read(./.env*)'));
+  assert.ok(!p.ask.includes('Read(./backend/poetry.lock)'));
+  assert.ok(!p.deny.some(r => /\/\.env\*|\.log/.test(r)));
 });
