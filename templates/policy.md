@@ -9,4 +9,7 @@
   (executing-plans), non subagent-driven, salvo richiesta. Fix banali e domande: nessuna skill.
 - Un hook puo' aggiungere "[lean-dev-kit] Suggerimento": proponilo in una riga e attendi conferma, non invocare.
 - Niente subagent senza richiesta esplicita. Memoria nativa; claude-mem solo se attivo nel progetto.
+- Memoria di progetto modulare: CLAUDE.md snello (<120 righe: stack, regole critiche, indice); il dettaglio di
+  ogni modulo in `docs/moduli/<modulo>.md`, letto solo quando ci lavori. Nuove conoscenze di un modulo vanno
+  nel suo file, non in CLAUDE.md. Prima di modificare un modulo leggi il suo file.
 - Output asciutto: niente preamboli, narrazione dei tool o riepiloghi finali.

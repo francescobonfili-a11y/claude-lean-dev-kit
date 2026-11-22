@@ -18,10 +18,14 @@ Ridurre il contesto caricato automaticamente da Claude Code.
 
 ### 2. Comprimi `CLAUDE.md`
 
-- Sposta architettura, convenzioni verbose ed esempi lunghi in `docs/architecture.md` (crea la directory se manca). Non perdere contenuto: spostalo, non cancellarlo.
-- In `CLAUDE.md` lascia solo: descrizione (3-5 righe), stack (elenco), convenzioni critiche (max 20 righe), link a `docs/architecture.md`.
-- Mostra il diff all'utente prima di sovrascrivere `CLAUDE.md`.
-- Verifica che il risultato sia <= 120 righe e <= 5120 byte.
+Struttura: un file per modulo/sezione in `docs/moduli/<modulo>.md`, letto solo quando serve.
+
+- Dividi `CLAUDE.md` per sezioni (`## ...`). Sposta il dettaglio dei moduli (architettura, regole di dominio, flussi, esempi lunghi) in `docs/moduli/<slug>.md`, una sezione per file, **copiando le righe testualmente**: non riassumere e non perdere contenuto.
+- Ogni file modulo inizia con un titolo e una riga di contesto ("leggi prima di toccare X").
+- In `CLAUDE.md` lascia: descrizione (3-5 righe), stack, convenzioni e insidie trasversali, una sezione "Regole critiche" (una riga per regola "mai/sempre" che si rompe facilmente), e un indice dei moduli (`nome` -> `docs/moduli/<slug>.md`) con l'istruzione "leggi il file solo quando lavori su quel modulo".
+- Se una parte duplica `~/.claude/CLAUDE.md` (regole globali), sostituiscila con un rimando e dillo nel report.
+- Prima di sovrascrivere `CLAUDE.md` mostra l'elenco dei file che creerai e le righe che restano. Se `CLAUDE.md` e' tracciato da git, il backup e' git; altrimenti salva `CLAUDE.md.bak`.
+- Verifica che ogni riga non vuota dell'originale compaia nel nuovo `CLAUDE.md` o nei file modulo (escluse intestazioni e duplicati dichiarati) e che il risultato sia <= 120 righe e <= 5120 byte.
 
 ### 3. Permessi di lettura (solo su richiesta esplicita)
 
@@ -47,7 +51,7 @@ Solo se `node "<base directory>/../audit/audit.js"` segnala agenti > ~3k token:
 ```
 ✅ init-lean completato
    CLAUDE.md: <righe> righe, <byte> byte
-   docs/architecture.md: creato/aggiornato/non necessario
+   docs/moduli/: <n> file creati (o non necessario)
    Permessi: nessuna restrizione (default) | deny/ask aggiunti su richiesta
    Agenti: <tenuti>/<totali>, archiviati in .claude/_archivio/agents/
 ```
