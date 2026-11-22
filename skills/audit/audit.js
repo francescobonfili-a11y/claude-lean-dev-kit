@@ -9,7 +9,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const proj = path.resolve(process.argv[2] || process.env.CLAUDE_PROJECT_DIR || process.cwd());
+const SAVE = process.argv.includes('--save');
+const proj = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) || process.env.CLAUDE_PROJECT_DIR || process.cwd());
+const slug = p => p.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
 const home = os.homedir();
 // Rapporti calibrati su /context reale: frontmatter agenti (inglese) ~4.6 car/token, CLAUDE.md (italiano+markdown) ~2.3.
 const estAgent = n => Math.ceil(n / 4.6);
@@ -57,6 +59,21 @@ for (const [label, f] of [
   });
   if (/^\s*@\S+/m.test(t)) notes.push(`${label}: CLAUDE.md contiene import @file, il peso reale e' maggiore della stima.`);
 }
+
+// 2b. Memoria nativa: le prime 200 righe di MEMORY.md sono caricate a ogni sessione.
+try {
+  const root = path.join(home, '.claude', 'projects');
+  const hit = fs.readdirSync(root).find(d => d.toLowerCase() === slug(proj));
+  const mem = hit && readTxt(path.join(root, hit, 'memory', 'MEMORY.md'));
+  if (mem) {
+    const loaded = mem.split(/\r?\n/).slice(0, 200).join('\n');
+    const tokens = estMd(loaded.length);
+    rows.push({
+      cat: 'Memoria (MEMORY.md)', tokens, detail: `${mem.split(/\r?\n/).length} righe, ${(mem.length / 1024).toFixed(1)} KB`,
+      advice: tokens > 1500 ? 'Indice pesante: accorcia le righe o elimina le memorie obsolete.' : '',
+    });
+  }
+} catch { /* nessuna memoria per questo progetto */ }
 
 // 3. Skill e comandi propri (utente + progetto)
 for (const [label, base] of [['utente', path.join(home, '.claude')], ['progetto', path.join(proj, '.claude')]]) {
@@ -110,6 +127,24 @@ console.log(`Modello: ${s.model || '(default)'} | effort: ${s.effortLevel || '(d
 console.log(`${pad('Voce', 28)}${pad('Token stimati', 15)}Dettaglio`);
 for (const r of rows) console.log(`${pad(r.cat, 28)}${pad(r.tokens === null ? '-' : '~' + r.tokens, 15)}${r.detail}`);
 console.log(`\nTotale stimato (agenti+CLAUDE.md+skill proprie): ~${fixed} token. System prompt e tool di base (~20k) esclusi; skill dei plugin non incluse: confronta con /context.`);
+// Baseline: confronto con lo snapshot salvato in precedenza (scrittura solo con --save).
+const stateFile = path.join(home, '.claude', 'lean-dev-kit', `baseline-${slug(proj)}.json`);
+const snap = { date: new Date().toISOString().slice(0, 10), total: fixed, rows: Object.fromEntries(rows.filter(r => r.tokens !== null).map(r => [r.cat, r.tokens])) };
+const base = readJson(stateFile);
+if (base.rows) {
+  const d = fixed - base.total;
+  console.log(`\nBaseline del ${base.date}: ~${base.total} -> ~${fixed} token (${d > 0 ? '+' : ''}${d})`);
+  for (const k of new Set([...Object.keys(base.rows), ...Object.keys(snap.rows)])) {
+    const delta = (snap.rows[k] || 0) - (base.rows[k] || 0);
+    if (delta) console.log(`  ${k}: ${delta > 0 ? '+' : ''}${delta}${k in base.rows ? '' : ' (nuova)'}${k in snap.rows ? '' : ' (rimossa)'}`);
+  }
+} else if (!SAVE) console.log('\nNessuna baseline: usa --save per salvare lo stato attuale come riferimento.');
+if (SAVE) {
+  fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+  fs.writeFileSync(stateFile, JSON.stringify(snap, null, 2) + '\n');
+  console.log(`\nBaseline salvata (${snap.date}, ~${fixed} token) in ${stateFile}`);
+}
+
 const adv = rows.filter(r => r.advice && (r.tokens === null || r.tokens > 0));
 const top = adv.filter(r => r.tokens).map(r => `- ${r.cat} (~${r.tokens}): ${r.advice}`);
 const other = adv.filter(r => !r.tokens).map(r => `- ${r.cat}: ${r.advice}`);
