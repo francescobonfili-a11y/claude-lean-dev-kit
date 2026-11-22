@@ -62,3 +62,16 @@ test('stack non rilevato: solo regole comuni', () => {
   const d = mk({ 'note.txt': 'x' });
   assert.match(run(d).stdout, /nessuno/);
 });
+
+test('monorepo: rileva gli stack nelle sottocartelle e prefissa le regole', () => {
+  const d = mk({ 'frontend/package.json': '{}', 'backend/requirements.txt': '', '.venv/x': '' });
+  const r = run(d, '--apply', '--ask-locks');
+  assert.match(r.stdout, /node \(frontend\/\)/);
+  assert.match(r.stdout, /python \(backend\/\)/);
+  const p = settings(d).permissions;
+  assert.ok(p.deny.includes('Read(./frontend/node_modules/**)'));
+  assert.ok(p.deny.includes('Read(./backend/.venv/**)'));
+  assert.ok(p.deny.includes('Read(./.venv/**)'));
+  assert.ok(p.ask.includes('Read(./frontend/package-lock.json)'));
+  assert.ok(p.deny.includes('Read(./.env*)'));
+});

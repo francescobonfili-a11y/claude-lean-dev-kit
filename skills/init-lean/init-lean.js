@@ -15,29 +15,39 @@ const ASK_LOCKS = args.includes('--ask-locks');
 const proj = path.resolve(args.find(a => !a.startsWith('--')) || process.env.CLAUDE_PROJECT_DIR || process.cwd());
 
 let entries = [];
-try { entries = fs.readdirSync(proj); } catch { console.error(`Cartella non leggibile: ${proj}`); process.exit(1); }
-const has = n => entries.includes(n);
-const hasExt = ext => entries.some(e => e.endsWith(ext));
+try { entries = fs.readdirSync(proj, { withFileTypes: true }); } catch { console.error(`Cartella non leggibile: ${proj}`); process.exit(1); }
+// Monorepo: oltre alla radice si guardano le sottocartelle di primo livello (frontend/, backend/...).
+const SKIP = new Set(['node_modules', 'dist', 'build', 'target', 'vendor', 'storage', 'docs']);
+const locations = [''].concat(entries.filter(e => e.isDirectory() && !e.name.startsWith('.') && !SKIP.has(e.name)).map(e => e.name));
+const listDir = loc => { try { return fs.readdirSync(path.join(proj, loc)); } catch { return []; } };
 
 // Regole comuni a ogni progetto.
 const COMMON_DENY = ['coverage/**', '**/*.log', '.env*'];
 
 // detect: come riconoscere lo stack. deny: percorsi rumorosi. ask: lockfile (opzionali).
 const STACKS = {
-  node:   { detect: () => has('package.json'), deny: ['node_modules/**', 'dist/**', 'build/**', '.next/**', '.nuxt/**'], ask: ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'] },
-  python: { detect: () => has('pyproject.toml') || has('requirements.txt') || has('setup.py'), deny: ['.venv/**', 'venv/**', '**/__pycache__/**', '.pytest_cache/**'], ask: ['poetry.lock', 'uv.lock', 'Pipfile.lock'] },
-  dotnet: { detect: () => hasExt('.sln') || hasExt('.csproj'), deny: ['**/bin/**', '**/obj/**'], ask: ['**/packages.lock.json'] },
-  rust:   { detect: () => has('Cargo.toml'), deny: ['target/**'], ask: ['Cargo.lock'] },
-  go:     { detect: () => has('go.mod'), deny: ['vendor/**'], ask: ['go.sum'] },
-  java:   { detect: () => has('pom.xml') || has('build.gradle') || has('build.gradle.kts'), deny: ['target/**', 'build/**', '.gradle/**'], ask: [] },
-  php:    { detect: () => has('composer.json'), deny: ['vendor/**'], ask: ['composer.lock'] },
-  unity:  { detect: () => has('Assets') && has('ProjectSettings'), deny: ['Library/**', 'Temp/**', 'Logs/**', '**/obj/**'], ask: [] },
+  node:   { detect: (has) => has('package.json'), deny: ['node_modules/**', 'dist/**', 'build/**', '.next/**', '.nuxt/**'], ask: ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'] },
+  python: { detect: (has) => has('pyproject.toml') || has('requirements.txt') || has('setup.py') || has('.venv') || has('venv'), deny: ['.venv/**', 'venv/**', '**/__pycache__/**', '.pytest_cache/**'], ask: ['poetry.lock', 'uv.lock', 'Pipfile.lock'] },
+  dotnet: { detect: (has, hasExt) => hasExt('.sln') || hasExt('.csproj'), deny: ['**/bin/**', '**/obj/**'], ask: ['**/packages.lock.json'] },
+  rust:   { detect: (has) => has('Cargo.toml'), deny: ['target/**'], ask: ['Cargo.lock'] },
+  go:     { detect: (has) => has('go.mod'), deny: ['vendor/**'], ask: ['go.sum'] },
+  java:   { detect: (has) => has('pom.xml') || has('build.gradle') || has('build.gradle.kts'), deny: ['target/**', 'build/**', '.gradle/**'], ask: [] },
+  php:    { detect: (has) => has('composer.json'), deny: ['vendor/**'], ask: ['composer.lock'] },
+  unity:  { detect: (has) => has('Assets') && has('ProjectSettings'), deny: ['Library/**', 'Temp/**', 'Logs/**', '**/obj/**'], ask: [] },
 };
 
-const detected = Object.keys(STACKS).filter(k => STACKS[k].detect());
-const rule = p => `Read(./${p})`;
-const wantDeny = [...new Set([...detected.flatMap(k => STACKS[k].deny), ...COMMON_DENY])].map(rule);
-const wantAsk = ASK_LOCKS ? [...new Set(detected.flatMap(k => STACKS[k].ask))].map(rule) : [];
+// found: { stack, loc } per ogni stack trovato nella radice o in una sottocartella.
+const found = [];
+for (const loc of locations) {
+  const names = listDir(loc);
+  const has = n => names.includes(n);
+  const hasExt = ext => names.some(e => e.endsWith(ext));
+  for (const k of Object.keys(STACKS)) if (STACKS[k].detect(has, hasExt)) found.push({ stack: k, loc });
+}
+// Pattern gia' globali (**/...) restano tali; gli altri sono relativi alla cartella dello stack.
+const rule = (loc, p) => `Read(./${loc && !p.startsWith('**/') ? loc + '/' : ''}${p})`;
+const wantDeny = [...new Set([...found.flatMap(({ stack, loc }) => STACKS[stack].deny.map(p => rule(loc, p))), ...COMMON_DENY.map(p => rule('', p))])];
+const wantAsk = ASK_LOCKS ? [...new Set(found.flatMap(({ stack, loc }) => STACKS[stack].ask.map(p => rule(loc, p))))] : [];
 
 const file = path.join(proj, '.claude', 'settings.json');
 let raw = null;
@@ -58,7 +68,7 @@ for (const [key, want] of [['deny', wantDeny], ['ask', wantAsk]]) {
 if (!Object.keys(settings.permissions).length) delete settings.permissions;
 
 console.log(`Progetto: ${proj}`);
-console.log(`Stack rilevato: ${detected.join(', ') || 'nessuno (solo regole comuni)'}`);
+console.log(`Stack rilevato: ${found.map(x => x.stack + (x.loc ? ` (${x.loc}/)` : '')).join(', ') || 'nessuno (solo regole comuni)'}`);
 if (!added.deny.length && !added.ask.length) { console.log('Gia\' allineato: nessuna regola da aggiungere.'); process.exit(0); }
 console.log(APPLY ? 'Regole aggiunte a .claude/settings.json:' : 'Regole proposte (nessuna scritta):');
 added.deny.forEach(r => console.log(`  deny ${r}`));
