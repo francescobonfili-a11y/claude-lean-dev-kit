@@ -39,7 +39,6 @@ Ridurre il contesto caricato automaticamente da Claude Code.
       "Read(./build/**)",
       "Read(./.next/**)",
       "Read(./coverage/**)",
-      "Read(./**/*.lock)",
       "Read(./**/*.log)",
       "Read(./.env*)"
     ]
@@ -48,6 +47,22 @@ Ridurre il contesto caricato automaticamente da Claude Code.
 ```
 
 - Mostra il diff all'utente prima di scrivere se il file esisteva gia'.
+
+**Lockfile (opzionale, con conferma).** Non vanno in `deny`: a volte servono per debuggare le dipendenze. Chiedi all'utente se vuole che Claude debba chiedere permesso prima di leggerli; se si', aggiungi (solo le mancanti, adattando allo stack) a `permissions.ask`:
+
+```json
+{
+  "permissions": {
+    "ask": [
+      "Read(./package-lock.json)",
+      "Read(./pnpm-lock.yaml)",
+      "Read(./**/*.lock)"
+    ]
+  }
+}
+```
+
+Con `ask` ogni lettura richiede l'approvazione dell'operatore. Senza conferma non aggiungere nulla.
 
 ### 4. Triage agenti e skill del progetto
 
@@ -64,6 +79,6 @@ Solo se `node "<base directory>/../audit/audit.js"` segnala agenti > ~3k token:
 ✅ init-lean completato
    CLAUDE.md: <righe> righe, <byte> byte
    docs/architecture.md: creato/aggiornato/non necessario
-   .claude/settings.json: <n> regole deny aggiunte
+   .claude/settings.json: <n> regole deny aggiunte, lockfile ask: si'/no
    Agenti: <tenuti>/<totali>, archiviati in .claude/_archivio/agents/
 ```
