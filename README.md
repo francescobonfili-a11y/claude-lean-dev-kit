@@ -15,7 +15,7 @@ Regolatore leggero per Claude Code: ogni skill/plugin si attiva solo quando serv
 |---|---|
 | `/lean-dev-kit:audit` | In qualsiasi progetto stima il contesto fisso (agenti, CLAUDE.md, skill, MCP, plugin; stima calibrata, il valore esatto e' `/context`) e classifica i risparmi |
 | `/lean-dev-kit:setup` | Allinea **questa postazione**: `opusplan`, effort `medium`, autocompact 50 e blocco di regole in `~/.claude/CLAUDE.md` (marcatori, idempotente, anteprima + backup). Da lanciare su ogni PC |
-| `/lean-dev-kit:init-lean` | Comprime `CLAUDE.md`, aggiunge `permissions.deny`, fa il triage degli agenti del progetto (archivia, non cancella) |
+| `/lean-dev-kit:init-lean` | Comprime `CLAUDE.md`, aggiunge `permissions.deny` (rileva lo stack; lockfile in `ask` opzionale), fa il triage degli agenti del progetto (archivia, non cancella) |
 | `/lean-dev-kit:mode [status\|base\|memory\|full]` | Accende i plugin pesanti solo nel progetto corrente |
 | Hook `SessionStart` | Solo in un progetto: avvisa se `CLAUDE.md` e' pesante o mancano regole deny |
 | Hook `UserPromptSubmit` | Suggerisce la skill adatta alla richiesta (bug, feature, test, review, API, analisi, memoria, costi). Una volta per tipo e sessione, silenzioso se nulla corrisponde |
@@ -51,7 +51,8 @@ Su ogni progetto: `/lean-dev-kit:audit`, poi se serve `/lean-dev-kit:init-lean`.
 ```
 .claude-plugin/{plugin.json, marketplace.json}
 skills/{audit,setup,mode}/{SKILL.md, *.js}
-skills/init-lean/SKILL.md
+skills/init-lean/{SKILL.md, init-lean.js}
+tests/init-lean.test.js  (node --test tests/)
 hooks/{hooks.json, check-lean.js, suggest.js}
 templates/policy.md
 ```

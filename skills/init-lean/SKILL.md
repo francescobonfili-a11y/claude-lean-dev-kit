@@ -25,44 +25,12 @@ Ridurre il contesto caricato automaticamente da Claude Code.
 
 ### 3. Escludi i file rumorosi
 
-`.claudeignore` NON e' supportato da Claude Code. Usa `permissions.deny` in `.claude/settings.json`.
+`.claudeignore` NON e' supportato da Claude Code. Le esclusioni vanno in `permissions.deny` di `.claude/settings.json`. Lo script rileva lo stack, fa il merge (non tocca altre chiavi ne' regole esistenti) e fa backup.
 
-- Se il file esiste, leggilo e fai merge: non sovrascrivere altre chiavi ne' regole esistenti.
-- Aggiungi (solo quelle mancanti, adattando allo stack del progetto):
-
-```json
-{
-  "permissions": {
-    "deny": [
-      "Read(./node_modules/**)",
-      "Read(./dist/**)",
-      "Read(./build/**)",
-      "Read(./.next/**)",
-      "Read(./coverage/**)",
-      "Read(./**/*.log)",
-      "Read(./.env*)"
-    ]
-  }
-}
-```
-
-- Mostra il diff all'utente prima di scrivere se il file esisteva gia'.
-
-**Lockfile (opzionale, con conferma).** Non vanno in `deny`: a volte servono per debuggare le dipendenze. Chiedi all'utente se vuole che Claude debba chiedere permesso prima di leggerli; se si', aggiungi (solo le mancanti, adattando allo stack) a `permissions.ask`:
-
-```json
-{
-  "permissions": {
-    "ask": [
-      "Read(./package-lock.json)",
-      "Read(./pnpm-lock.yaml)",
-      "Read(./**/*.lock)"
-    ]
-  }
-}
-```
-
-Con `ask` ogni lettura richiede l'approvazione dell'operatore. Senza conferma non aggiungere nulla.
+1. Anteprima: `node "<base directory di questa skill>/init-lean.js"`. Mostra lo stack e le regole che aggiungerebbe.
+2. Lockfile (opzionale): non vanno in `deny` perche' a volte servono per debuggare le dipendenze. Chiedi all'utente se vuole che Claude debba chiedere permesso prima di leggerli (`permissions.ask`). Se si', aggiungi `--ask-locks`.
+3. Mostra l'anteprima e chiedi conferma. Senza un "si'" non scrivere nulla.
+4. Con la conferma: `node "<base directory di questa skill>/init-lean.js" --apply [--ask-locks]`.
 
 ### 4. Triage agenti e skill del progetto
 
